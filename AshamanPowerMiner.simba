@@ -1,0 +1,462 @@
+program AshamanPowerMine;
+{$DEFINE SMART}
+{$i srl-6/srl.simba}
+
+///////////////////////////////////////////////////////////////////////
+//                                                                   //
+//                  Begin of user setup                              //
+//                Fill in the fields below                           //
+//                                                                   //
+///////////////////////////////////////////////////////////////////////
+
+Const
+{General Settings}
+  RockColor  = 'Silver';           //*** 'Silver' if rock is gray/silver color, 'Brown' if rock is brown***
+  Ore        = 'Iron';             //*** Ore to mine, (Tin,Copper,Iron,Coal,Gold,Mithril,Addy)***
+  Direction  = MM_DIRECTION_SOUTH; //*** Direction you want your guy to face (North,South,East,West)***
+  QuickKey   = 1;                  //*** Which key did  you bind the ore to?***
+  SlowItDown = False;              //*** Go slower? IE mouse off screen...more pauses DISABLED FOR NOW***
+  Hopper     = False;              //*** Hop if someone crashes your world? DISABLED FOR NOW***
+
+{Break Settings}
+  TakeBreaks    = False;        // ***Take breaks? If false ignore break variables***
+  BreakIn       = 600;          // ***How long before we take a break? (minutes)***
+  BreakFor      = 15;           // ***How long will we break for? (minutes)***
+  Bir           = 13;           // ***Random minutes to add/subtract from how long until we break***
+  Bfr           = 7;            // ***Random minutes to add/subjtract from break duraction***
+
+
+Procedure DeclarePlayers;
+Begin
+  Players.Setup(['Player1'], 'PlayerList'); //***Fill this out, Player1 = Name of the account in player manager, PlayerList = name of the player file***
+  SetLength(Players,1);
+
+  //***If NOT using the player manager, fill out the loginname and password below, otherwise ignore those two***
+  With players[0] Do
+  Begin
+  // loginName := '';      {Remove the "//" from this line if you arent using player manager}
+  // password := '';       {Remove the "//" from this line if you arent using player manager}
+    IsActive := True;
+    World := 134;          {Remove the "//" from this line if you want to login to a specific world - RECOMMENDED SO YOU WONT CRASH PEOPLE WHEN SIX HOUR RELOAD}
+  End;
+  CurrentPlayer := 0;
+End;
+
+///////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                       //
+//                            End of user setup                                          //
+//           Don't touch below this line unless you know what you're doing!!             //
+//                                                                                       //
+///////////////////////////////////////////////////////////////////////////////////////////
+
+Var
+  OresMined,OreXP,OreDTM,XP,RColor,RTolerance,OColor,OTolerance:integer;
+  SkipCenter: Boolean;
+  XPH,OresPH,RSat,RHue,OSat,OHue: Extended;
+  CurrentBTime: TTimeMarker;
+  W,X,Y,Z,BreakRounds,TotalBreaks,RealBTime: Integer;
+
+
+Const
+  Debug = False;
+  ScriptVersion = '1.0';
+
+Function FindNormalRandoms: Boolean;
+Begin
+  Result:= ExitSquealOfFortune Or ClaimSpinTicket;
+End;
+
+Function BreakHandler(BreakIn, BreakFor, randBreakIn, randBreakFor: Integer): Boolean;
+Var
+  H,M,S: Integer;
+Begin
+  If Not IsLoggedIn Then
+    Exit;
+
+  If (GetTimeRunning < ((W) + (Y) + BreakRounds)) Then
+    Exit Else
+    If (GetTimeRunning > ((W) + (Y) + BreakRounds)) Then
+    Begin
+      RealBTime := Round((X+Z)/60000);
+      Writeln('Taking a break for about ' + IntToStr(RealBTime) + ' minutes.');
+      Players[CurrentPlayer].Logout;
+      CurrentBTime.Reset;
+      CurrentBTime.Start;
+      Repeat
+        Wait(21000);
+        ConvertTime((X+Z)-CurrentBTime.GetTime,H,M,S);
+        Writeln('Breaktime left: '+IntToStr(H)+':'+IntToStr(M)+':'+IntToStr(S));
+      Until(CurrentBTime.GetTime>(X+Z));
+      Writeln('Logging in.');
+      Players[CurrentPlayer].Login;
+      Wait(4000);
+      Result := IsLoggedIn;
+      Minimap.SetAngle(Direction);
+      MainScreen.SetAngle(MS_ANGLE_HIGH);
+      IncEx(BreakRounds, (W) + (X));
+      Inc(TotalBreaks);
+      Writeln('The next break will occur in about ' + IntToStr(BreakIn) + ' minutes.');
+      W := (BreakIn * 60000);
+      X := (BreakFor * 60000);
+      Y := RandomRange(-BIR * 60000, BIR * 60000);
+      Z := RandomRange(-BFR * 60000, BFR * 60000);
+    End;
+End;
+
+Procedure QuickBoxSort(var A: TIntegerArray; var B: TBoxArray; iLo, iHi: Integer; SortUp: Boolean);
+Var
+  Lo, Hi, Mid, T: Integer;
+  TP: TBox;
+Begin
+  If (Length(A) <> Length(B)) Then
+    Exit;
+  Lo := iLo;
+  Hi := iHi;
+  Mid := A[(Lo + Hi) shr 1];
+  Repeat
+    If SortUp Then
+    Begin
+      While (A[Lo] < Mid) Do Inc(Lo);
+      While (A[Hi] > Mid) Do Dec(Hi);
+    End Else
+    Begin
+      While (A[Lo] > Mid) Do Inc(Lo);
+      While (A[Hi] < Mid) Do Dec(Hi);
+    End;
+    If (Lo <= Hi) Then
+    Begin
+      T := A[Lo];
+      A[Lo] := A[Hi];
+      A[Hi] := T;
+      TP := B[Lo];
+      B[Lo] := B[Hi];
+      B[Hi] := TP;
+      Inc(Lo);
+      Dec(Hi);
+    End;
+  Until Lo > Hi;
+  If (Hi > iLo) Then QuickBoxSort(A, B, iLo, Hi, SortUp);
+  If (Lo < iHi) Then QuickBoxSort(A, B, Lo, iHi, SortUp);
+End;
+
+
+{*
+  Sorts A TBoxArray by Mid-Point. Closest OverallBox by Midpoint to the From-Point First.
+*}
+Procedure MidSortBoxArrayFrom(Var BoxArray: TBoxArray; Const From: TPoint);
+Var
+   I,L: Integer;
+   Mid: TPoint;
+   DistArr: TIntegerArray;
+Begin
+  L := High(BoxArray);
+  If (L < 0) Then
+    Exit;
+  SetLength(DistArr, L + 1);
+
+  For I := 0 To L Do
+  Begin
+    Mid := MiddleBox(BoxArray[I]);
+    DistArr[I] := Round(Sqr(From.X - Mid.X) + Sqr(From.Y - Mid.Y));
+  End;
+
+  QuickBoxSort(DistArr,BoxArray,0,l,True);
+End;
+
+{*******************************************************************************
+Function AutoupdateMe;
+By: Shuttleu
+Edited By: Ashaman88
+Description: Autoupdates Script.
+*******************************************************************************}
+Procedure AutoUpdateMe;
+Var
+  Neifile: Integer;
+  OnlineVersion, NewScript, NeiFeilNennen: String;
+Begin
+  Writeln('Checking for script updates...');
+  OnlineVersion := GetPage('http://ashamanpowerminer.googlecode.com/git/Version.txt');
+  Writeln('Online Version: '+ToStr(OnlineVersion));
+  Writeln('Local Version: '+ToStr(ScriptVersion));
+  If (trim(OnlineVersion) > ScriptVersion) Then
+  Begin
+    WriteLn('Newer script version online!');
+    WriteLn('Autoupdating to newer version.');
+    NewScript := GetPage('http://ashamanpowerminer.googlecode.com/git/AshamanPowerMiner.simba');
+    NeiFeilNennen := ScriptPath+ 'AshamanPowerMiner V'+OnlineVersion+'.simba';
+    Neifile := Rewritefile(NeiFeilNennen, true);
+    Try
+      WriteFileString(Neifile, NewScript);
+    Except
+      Begin
+        WriteLn('Fatal error writing to '+NeiFeilNennen+'!!');
+        Terminatescript;
+      End;
+    End;
+    CloseFile(Neifile);
+    WriteLn('New script downloaded to '+NeiFeilNennen+'!! Please use this one!!');
+    TerminateScript;
+  End Else
+    WriteLn('You have the latest version of the script!');
+End;
+
+
+Procedure Free;
+Begin
+  FreeDTM(OreDTM);
+End;
+
+
+Procedure Setup;
+Begin
+  ClearDebug;
+  AutoUpdateMe;
+  SmartEnableDrawing := True;
+
+  DeclarePlayers;
+  SetupSRL;
+
+  If Not Players[CurrentPlayer].Login Then
+    TerminateScript;
+
+  DisableSRLDebug:=True;
+
+  Minimap.SetAngle(Direction);
+  MainScreen.SetAngle(MS_ANGLE_HIGH);
+
+  FindNormalRandoms;
+  AddOnTerminate('Free');
+
+  Case LowerCase(RockColor) Of
+    'silver':Begin RHue:=0.12; RSat:=0.18; RColor:=8293517; RTolerance:=14; End;
+    'brown': Begin RHue:=0.02; RSat:=0.10; RColor:=3501442; RTolerance:=14; End;
+  End;
+
+  Case LowerCase(Ore) Of
+    'tin':      Begin OHue:=0.19; OSat:=1.02; OColor:=9412549; OTolerance:=27; OreXP:=27; OreDTM := DTMFromString('mggAAAHicY2NgYJBgZmCQBmIlIFYEYlEg5gfifkYGhlYg7gbiSUA8A4h7gTgtMRGCAy0ZslJTGWK9TBgSfEwZuIBmYcOMODAEAAA0qwqB'); End;
+    'copper':   Begin OHue:=0.14; OSat:=1.14; OColor:=6073065; OTolerance:=21; OreXP:=18; OreDTM := DTMFromString('mggAAAHicY2NgYHjHxMDwEYh/AfF3IH4DxE+AuJeRgaEViLuBeAoQTwfiiUC8NcOcYV+OFUNWiDXDrixLhiQ/M4aUAHMGLqBZ2DAjDgwBAKszEDM='); End;
+    'iron':     Begin OHue:=0.08; OSat:=0.20; OColor:=2570082; OTolerance:=7;  OreXP:=35; OreDTM := DTMFromString('mggAAAHicY2NgYNjAxMCwEYh3AfEOIF4DxEtBNCMDwxIgXgrEm4F4CxCvA2JzBQkGE3lxhkQ/czAd6W4EZnMBzcKGGXFgCAAAaJkMag=='); End;
+    'coal':     Begin OHue:=0.00; OSat:=1.08; OColor:=1645853; OTolerance:=5;  OreXP:=50; OreDTM := DTMFromString('mggAAAHicY2NgYJBjZmBQAmJtIFYDYhEglgHibEYGhkQgTgbiHCDOBOIiIFZRlmZQV5djyAmzYZCUFGYIddZniPUyYeACmoUNM+LAEAAARXgHSw=='); End;
+    'gold':     Begin OHue:=0.16; OSat:=1.64; OColor:=6150378; OTolerance:=14; OreXP:=65; OreDTM := DTMFromString('mggAAAHicY2NgYJjJxMAwD4iXAvFCIJ4BxBOBuJeRgaENiLuBeDIQTwfiCUA8u1qUYX23BENaoCVDT74wQ7SnMUOCjykDF9AsbJgRB4YAAJfRDYw='); End;
+    'mithril':  Begin OHue:=0.04; OSat:=0.49; OColor:=8868946; OTolerance:=17; OreXP:=80; OreDTM := DTMFromString('mggAAAHicY2NgYDjMxMBwDIjPAfFpJgh/JxD3MzIwtAFxBxBPAeKZQNwHxEbGPmCc5GfGYGjoyZDgY8oQ5KTHwAU0CxtmxIEhAACTaQzn'); End;
+    'addy':     Begin OHue:=0.07; OSat:=0.15; OColor:=6521442; OTolerance:=11; OreXP:=95; OreDTM := DTMFromString('mggAAAHicY2NgYJjFxMAwB4iXAPFCIJ4GxP0gzMjA0A7EXUA8CYinA3EfEFs6WTJYu1gzpAVaMqhoqTCEuxowBDnpMXABzcKGGXFgCAAAEyQLsA=='); End;
+  End;
+
+  W := (BreakIn * 60000);
+  X := (BreakFor * 60000);
+  Y := RandomRange(-BIR * 60000, BIR * 60000);
+  Z := RandomRange(-BFR * 60000, BFR * 60000);
+End;
+
+Function FindOre: Boolean;
+Var
+  X,Y,H,I,CTS,XX,YY,SearchFromX,SearchFromY,XF,YF: Integer;
+  TempSearchX1,TempSearchY1,TempSearchX2,TempSearchY2: Integer;
+  T: TTimeMarker;
+  MBP: Tpoint;
+  TPA,TPA2: TPointArray;
+  ATPA,ATPA2: T2DPointArray;
+  NetBox: TBox;
+  TBA : TBoxArray;
+Begin
+  If Not IsLoggedIn Then
+    Exit;
+
+  CTS := GetToleranceSpeed;
+  SetColorToleranceSpeed(2);
+  SetToleranceSpeed2Modifiers(RHue,RSat);
+  FindColorsSpiralTolerance(Mainscreen.PlayerPoint.X,Mainscreen.PlayerPoint.Y,TPA,RColor,MainScreen.GetBounds,RTolerance);
+  SetColorToleranceSpeed(CTS);
+  SetToleranceSpeed2Modifiers(0.2, 0.2);
+
+  ATPA := SplitTPAEx(TPA,5,10);
+
+  If (Length(ATPA) = 0) Then
+    Exit;
+
+  H:=High(ATPA);
+
+  For I:=0 To H Do
+  Begin
+    MiddleTPAEx(ATPA[I],X,Y);
+
+    If Debug Then
+      Writeln('Rock Length: '+tostr(Length(atpa[i]))+' For I:= '+ToStr(I));
+
+    If (Length(ATPA[I]) < 150) Then
+      Continue;
+
+    NetBox := GetTPABounds(ATPA[I]);
+    NetBox := IntToBox(Max(NetBox.X1+3,0),Max(NetBox.Y1+2,0),Min(NetBox.X2-5,Mainscreen.Getbounds.X2),Min(NetBox.Y2-4,Mainscreen.Getbounds.Y2));
+
+    With NetBox Do
+    Begin
+      SetColorToleranceSpeed(2);
+      SetToleranceSpeed2Modifiers(OHue,OSat);
+      FindColorsSpiralTolerance(Mainscreen.PlayerPoint.X,Mainscreen.PlayerPoint.Y,TPA2,OColor,NetBox.X1,NetBox.Y1,NetBox.X2,NetBox.Y2,OTolerance);
+      SetColorToleranceSpeed(CTS);
+      SetToleranceSpeed2Modifiers(0.2, 0.2);
+
+      If (Length(TPA2) > 2) Then
+      Begin
+        SetArrayLength(TBA, Length(TBA)+1);
+        TBA[High(TBA)] := NetBox;
+      End;
+    End;
+  End;
+
+  SetLength(TPA2,0);
+  MidSortBoxArrayFrom(TBA,Mainscreen.PlayerPoint);
+
+   Try
+    SmartImage.Clear;
+    SmartImage.DrawBoxes(TBA,False,clred);
+  Except
+    Writeln('Box out of bounds');
+  End;
+
+  For H := 0 To High(TBA) Do
+  Begin
+    MBP := MiddleBox(TBA[H]);
+
+    MouseBox(TBA[H],Mouse_Move,Mouse_Break);
+
+    If IsMouseOverText(['ore roc']) Then
+    Begin
+      If Debug Then
+        Writeln('Found ore, clicking');
+      If DidClick(True,600) Then
+      Begin
+        Result:=True;
+        SetLength(TPA,0);
+        SetLength(ATPA,0);
+        If TabBackpack.WaitForShift(5000) Then
+        Begin
+          IncEx(OresMined,1);
+          Exit;
+        End;
+      End Else
+        Wait(RandomRange(1000,2000));
+    End;
+  End;
+  SetLength(TPA,0);
+  SetLength(ATPA,0);
+End;
+
+Procedure Drop;
+var
+  timesTried:integer;
+  T: TTimeMarker;
+begin
+  FindNormalRandoms;
+  If Not IsLoggedIn Then
+    Exit;
+
+  If TabBackpack.IsEmpty then
+    Exit;
+
+  If Not SkipCenter Then
+  Begin
+    TypeByte(VK_ENTER);
+    Wait(RandomRange(500,600));
+    TypeByte(VK_ESCAPE);
+    TypeByte(VK_ESCAPE);
+    SkipCenter:=True;
+  End;
+  T.Start;
+  Repeat
+    TypeSend(ToStr(QuickKey), False);
+    Wait(GaussRangeInt(0,500));
+
+    If Not IsLoggedIn Then
+      Exit;
+
+    If T.GetTime>15000 Then
+      Exit;
+  Until TabBackpack.CountDTM(OreDTM)=0;
+
+  If TabBackpack.Count = 0 Then
+    Exit Else
+    Wait(GaussRangeInt(1000,1500));
+
+  If TabBackpack.Count = 0 Then
+    Exit;
+
+  T.Reset;
+  T.Start;
+  Repeat
+    TabBackpack.DropItems;
+    FindNormalRandoms;
+  Until TabBackpack.Count = 0 Or T.GetTime>5000;
+End;
+
+
+
+Procedure ProgressReport;
+Begin
+  ClearDebug;
+  XP:=OresMined*OreXP;
+  XPH := Round(XP * (3600.0 / (GetTimeRunning / 1000.0)));
+  OresPH := Round((OresMined * (3600.0 / (GetTimeRunning / 1000.0))));
+
+  Writeln('========AshamanPowerMiner v'+ScriptVersion+'=========');
+  Writeln('Time Running: ' + ToStr(TimeRunning));
+  Writeln('Mining: ' + Ore);
+  Writeln('Ore Mined: ' + ToStr(OresMined));
+  Writeln('Experience Earned: ' + IntToStr(XP));
+  Writeln('Experience/Hour: ' + ToStr(XPH));
+  Writeln('Ores/H: ' + ToStr(OresPH));
+  Writeln('=======================================');
+End;
+
+Procedure MineRocks;
+Var
+  RockTimer:TTimeMarker;
+Begin
+  If Not IsLoggedIn Then
+    Exit;
+  RockTimer.Start;
+
+  Repeat
+    If FindOre Then
+    Begin
+      RockTimer.Reset;
+      RockTimer.Start;
+      ProgressReport;
+    End Else
+      Drop;
+    If Not IsLoggedIn Then
+      Exit;
+    If RockTimer.GetTime>300000 Then
+      TerminateScript;
+    Wait(Random(100));
+
+    If TakeBreaks Then
+      If BreakHandler(BreakIn,BreakFor,Bir,Bfr) Then
+      Begin
+        RockTimer.Reset;
+        RockTimer.Start;
+      End;
+  Until (TabBackpack.IsFull);
+End;
+
+
+Begin
+  Setup;
+  While (Players.GetActive() > 0) Do
+  Begin
+    MineRocks;
+    Drop;
+    ProgressReport;
+    If Not IsLoggedIn Then
+      If Not Players[CurrentPlayer].Login Then
+      TerminateScript Else
+      Begin
+        Minimap.SetAngle(Direction);
+        MainScreen.SetAngle(MS_ANGLE_HIGH);
+        SkipCenter:=False;
+      End;
+    If TakeBreaks Then
+      BreakHandler(BreakIn,BreakFor,Bir,Bfr);
+  End;
+End.
