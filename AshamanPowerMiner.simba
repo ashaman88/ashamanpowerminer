@@ -1,6 +1,6 @@
-program AshamanPowerMine;
+Program AshamanPowerMiner;
 {$DEFINE SMART}
-{$i srl-6/srl.simba}
+{$I SRL-6/SRL.Simba}
 
 ///////////////////////////////////////////////////////////////////////
 //                                                                   //
@@ -11,9 +11,9 @@ program AshamanPowerMine;
 
 Const
 {General Settings}
-  RockColor  = 'Silver';           //*** 'Silver' if rock is gray/silver color, 'Brown' if rock is brown***
+  RockColor  = 'Brown';           //*** 'Silver' if rock is gray/silver color, 'Brown' if rock is brown***
   Ore        = 'Iron';             //*** Ore to mine, (Tin,Copper,Iron,Coal,Gold,Mithril,Addy)***
-  Direction  = MM_DIRECTION_SOUTH; //*** Direction you want your guy to face (North,South,East,West)***
+  Direction  = MM_DIRECTION_NORTH; //*** Direction you want your guy to face (North,South,East,West)***
   QuickKey   = 1;                  //*** Which key did  you bind the ore to?***
   SlowItDown = False;              //*** Go slower? IE mouse off screen...more pauses DISABLED FOR NOW***
   Hopper     = False;              //*** Hop if someone crashes your world? DISABLED FOR NOW***
@@ -37,7 +37,7 @@ Begin
   // loginName := '';      {Remove the "//" from this line if you arent using player manager}
   // password := '';       {Remove the "//" from this line if you arent using player manager}
     IsActive := True;
-    World := 134;          {Remove the "//" from this line if you want to login to a specific world - RECOMMENDED SO YOU WONT CRASH PEOPLE WHEN SIX HOUR RELOAD}
+    World := 0;          {Remove the "//" from this line if you want to login to a specific world - RECOMMENDED SO YOU WONT CRASH PEOPLE WHEN SIX HOUR RELOAD}
   End;
   CurrentPlayer := 0;
 End;
@@ -59,7 +59,7 @@ Var
 
 Const
   Debug = False;
-  ScriptVersion = '1.0';
+  ScriptVersion = '1.1';
 
 Function FindNormalRandoms: Boolean;
 Begin
@@ -272,7 +272,16 @@ Begin
   ATPA := SplitTPAEx(TPA,5,10);
 
   If (Length(ATPA) = 0) Then
+  Begin
+    If Lowercase(RockColor) = 'brown' Then
+    Begin
+      RHue:=0.04;
+      RSat:=0.23;
+      RColor:=1598075;
+      RTolerance:=10;
+    End;
     Exit;
+  End;
 
   H:=High(ATPA);
 
@@ -385,6 +394,7 @@ begin
   T.Reset;
   T.Start;
   Repeat
+    Wait(GaussRangeInt(500,1100));
     TabBackpack.DropItems;
     FindNormalRandoms;
   Until TabBackpack.Count = 0 Or T.GetTime>5000;
