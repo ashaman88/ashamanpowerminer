@@ -12,8 +12,8 @@ Program AshamanPowerMiner;
 Const
 {General Settings}
   RockColor  = 'Brown';           //*** 'Silver' if rock is gray/silver color, 'Brown' if rock is brown***
-  Ore        = 'Iron';             //*** Ore to mine, (Tin,Copper,Iron,Coal,Gold,Mithril,Addy)***
-  Direction  = MM_DIRECTION_NORTH; //*** Direction you want your guy to face (North,South,East,West)***
+  Ore        = 'Copper';             //*** Ore to mine, (Tin,Copper,Iron,Coal,Gold,Mithril,Addy)***
+  Direction  = MM_DIRECTION_EAST; //*** Direction you want your guy to face (North,South,East,West)***
   QuickKey   = 1;                  //*** Which key did  you bind the ore to?***
   SlowItDown = False;              //*** Go slower? IE mouse off screen...more pauses DISABLED FOR NOW***
   Hopper     = False;              //*** Hop if someone crashes your world? DISABLED FOR NOW***
@@ -59,7 +59,7 @@ Var
 
 Const
   Debug = False;
-  ScriptVersion = '1.1';
+  ScriptVersion = '1.2';
 
 Function FindNormalRandoms: Boolean;
 Begin
@@ -275,9 +275,9 @@ Begin
   Begin
     If Lowercase(RockColor) = 'brown' Then
     Begin
-      RHue:=0.04;
-      RSat:=0.23;
-      RColor:=1598075;
+      RHue:=0.08;
+      RSat:=1.05;
+      RColor:=1204865;
       RTolerance:=10;
     End;
     Exit;
@@ -375,7 +375,7 @@ begin
   T.Start;
   Repeat
     TypeSend(ToStr(QuickKey), False);
-    Wait(GaussRangeInt(0,500));
+    Wait(GaussRangeInt(0,100));
 
     If Not IsLoggedIn Then
       Exit;
