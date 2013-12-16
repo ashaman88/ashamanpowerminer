@@ -51,7 +51,7 @@ End;
 
 Var
   OresMined,OreXP,OreDTM,XP,RColor,RTolerance,OColor,OTolerance:integer;
-  SkipCenter: Boolean;
+  SkipCenter,Switch: Boolean;
   XPH,OresPH,RSat,RHue,OSat,OHue: Extended;
   CurrentBTime: TTimeMarker;
   W,X,Y,Z,BreakRounds,TotalBreaks,RealBTime: Integer;
@@ -59,7 +59,7 @@ Var
 
 Const
   Debug = False;
-  ScriptVersion = '1.2';
+  ScriptVersion = '1.3';
 
 Function FindNormalRandoms: Boolean;
 Begin
@@ -212,6 +212,7 @@ Begin
   ClearDebug;
   AutoUpdateMe;
   SmartEnableDrawing := True;
+  Switch:=True;
 
   DeclarePlayers;
   SetupSRL;
@@ -317,11 +318,24 @@ Begin
   SetLength(TPA2,0);
   MidSortBoxArrayFrom(TBA,Mainscreen.PlayerPoint);
 
-   Try
+  Try
     SmartImage.Clear;
     SmartImage.DrawBoxes(TBA,False,clred);
   Except
     Writeln('Box out of bounds');
+  End;
+
+  If (Length(TBA)=0) And (Switch) Then
+  Begin
+    If Lowercase(RockColor) = 'brown' Then
+    Begin
+      RHue:=0.08;
+      RSat:=1.05;
+      RColor:=1204865;
+      RTolerance:=10;
+    End;
+    Switch:=False;
+    Exit;
   End;
 
   For H := 0 To High(TBA) Do
@@ -337,6 +351,7 @@ Begin
       If DidClick(True,600) Then
       Begin
         Result:=True;
+        Switch:=False;
         SetLength(TPA,0);
         SetLength(ATPA,0);
         If TabBackpack.WaitForShift(5000) Then
