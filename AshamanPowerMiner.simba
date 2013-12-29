@@ -11,10 +11,10 @@ Program AshamanPowerMiner;
 
 Const
 {General Settings}
-  RockColor  = 'Brown';           //*** 'Silver' if rock is gray/silver color, 'Brown' if rock is brown***
-  Ore        = 'Copper';             //*** Ore to mine, (Tin,Copper,Iron,Coal,Gold,Mithril,Addy)***
-  Direction  = MM_DIRECTION_EAST; //*** Direction you want your guy to face (North,South,East,West)***
-  QuickKey   = 1;                  //*** Which key did  you bind the ore to?***
+  RockColor  = 'Silver';           //*** 'Silver' if rock is gray/silver color, 'Brown' if rock is brown***
+  Ore        = 'Iron';             //*** Ore to mine, (Tin,Copper,Iron,Coal,Gold,Mithril,Addy)***
+  Direction  = MM_DIRECTION_SOUTH; //*** Direction you want your guy to face (North,South,East,West)***
+  QuickKey   = 0;                  //*** Which key did  you bind the ore to?***
   SlowItDown = False;              //*** Go slower? IE mouse off screen...more pauses DISABLED FOR NOW***
   Hopper     = False;              //*** Hop if someone crashes your world? DISABLED FOR NOW***
 
@@ -37,7 +37,7 @@ Begin
   // loginName := '';      {Remove the "//" from this line if you arent using player manager}
   // password := '';       {Remove the "//" from this line if you arent using player manager}
     IsActive := True;
-    World := 0;          {Remove the "//" from this line if you want to login to a specific world - RECOMMENDED SO YOU WONT CRASH PEOPLE WHEN SIX HOUR RELOAD}
+    World := 00;          {Change this line if you want to login to a specific world - RECOMMENDED SO YOU WONT CRASH PEOPLE WHEN SIX HOUR RELOAD}
   End;
   CurrentPlayer := 0;
 End;
@@ -50,16 +50,16 @@ End;
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 Var
-  OresMined,OreXP,OreDTM,XP,RColor,RTolerance,OColor,OTolerance:integer;
+  OresMined,OreXP,OreDTM,XP,RColor,RTolerance,OColor,OTolerance,RColor2,RTolerance2,RColor3,RTolerance3:integer;
   SkipCenter,Switch: Boolean;
-  XPH,OresPH,RSat,RHue,OSat,OHue: Extended;
+  XPH,OresPH,RSat,RHue,OSat,OHue,RSat2,RHue2,RSat3,RHue3: Extended;
   CurrentBTime: TTimeMarker;
   W,X,Y,Z,BreakRounds,TotalBreaks,RealBTime: Integer;
 
 
 Const
   Debug = False;
-  ScriptVersion = '1.3';
+  ScriptVersion = '1.4';
 
 Function FindNormalRandoms: Boolean;
 Begin
@@ -220,7 +220,8 @@ Begin
   If Not Players[CurrentPlayer].Login Then
     TerminateScript;
 
-  DisableSRLDebug:=True;
+  If Not Debug Then
+    DisableSRLDebug:=True;
 
   Minimap.SetAngle(Direction);
   MainScreen.SetAngle(MS_ANGLE_HIGH);
@@ -230,13 +231,13 @@ Begin
 
   Case LowerCase(RockColor) Of
     'silver':Begin RHue:=0.12; RSat:=0.18; RColor:=8293517; RTolerance:=14; End;
-    'brown': Begin RHue:=0.02; RSat:=0.10; RColor:=3501442; RTolerance:=14; End;
+    'brown': Begin RHue:=0.02; RSat:=0.10; RColor:=3501442; RTolerance:=14; RHue2:=0.08; RSat2:=1.05; RColor2:=1204865; RTolerance2:=10; RHue3:=0.04; RSat3:=0.33; RColor3:=5798036; RTolerance3:=12; End;
   End;
 
   Case LowerCase(Ore) Of
     'tin':      Begin OHue:=0.19; OSat:=1.02; OColor:=9412549; OTolerance:=27; OreXP:=27; OreDTM := DTMFromString('mggAAAHicY2NgYJBgZmCQBmIlIFYEYlEg5gfifkYGhlYg7gbiSUA8A4h7gTgtMRGCAy0ZslJTGWK9TBgSfEwZuIBmYcOMODAEAAA0qwqB'); End;
     'copper':   Begin OHue:=0.14; OSat:=1.14; OColor:=6073065; OTolerance:=21; OreXP:=18; OreDTM := DTMFromString('mggAAAHicY2NgYHjHxMDwEYh/AfF3IH4DxE+AuJeRgaEViLuBeAoQTwfiiUC8NcOcYV+OFUNWiDXDrixLhiQ/M4aUAHMGLqBZ2DAjDgwBAKszEDM='); End;
-    'iron':     Begin OHue:=0.08; OSat:=0.20; OColor:=2570082; OTolerance:=7;  OreXP:=35; OreDTM := DTMFromString('mggAAAHicY2NgYNjAxMCwEYh3AfEOIF4DxEtBNCMDwxIgXgrEm4F4CxCvA2JzBQkGE3lxhkQ/czAd6W4EZnMBzcKGGXFgCAAAaJkMag=='); End;
+    'iron':     Begin OHue:=0.08; OSat:=0.20; OColor:=2504288; OTolerance:=8;  OreXP:=35; OreDTM := DTMFromString('mggAAAHicY2NgYNjAxMCwEYh3AfEOIF4DxEtBNCMDwxIgXgrEm4F4CxCvA2JzBQkGE3lxhkQ/czAd6W4EZnMBzcKGGXFgCAAAaJkMag=='); End;
     'coal':     Begin OHue:=0.00; OSat:=1.08; OColor:=1645853; OTolerance:=5;  OreXP:=50; OreDTM := DTMFromString('mggAAAHicY2NgYJBjZmBQAmJtIFYDYhEglgHibEYGhkQgTgbiHCDOBOIiIFZRlmZQV5djyAmzYZCUFGYIddZniPUyYeACmoUNM+LAEAAARXgHSw=='); End;
     'gold':     Begin OHue:=0.16; OSat:=1.64; OColor:=6150378; OTolerance:=14; OreXP:=65; OreDTM := DTMFromString('mggAAAHicY2NgYJjJxMAwD4iXAvFCIJ4BxBOBuJeRgaENiLuBeDIQTwfiCUA8u1qUYX23BENaoCVDT74wQ7SnMUOCjykDF9AsbJgRB4YAAJfRDYw='); End;
     'mithril':  Begin OHue:=0.04; OSat:=0.49; OColor:=8868946; OTolerance:=17; OreXP:=80; OreDTM := DTMFromString('mggAAAHicY2NgYDjMxMBwDIjPAfFpJgh/JxD3MzIwtAFxBxBPAeKZQNwHxEbGPmCc5GfGYGjoyZDgY8oQ5KTHwAU0CxtmxIEhAACTaQzn'); End;
@@ -255,7 +256,7 @@ Var
   TempSearchX1,TempSearchY1,TempSearchX2,TempSearchY2: Integer;
   T: TTimeMarker;
   MBP: Tpoint;
-  TPA,TPA2: TPointArray;
+  TPA,TPA2,TPA3: TPointArray;
   ATPA,ATPA2: T2DPointArray;
   NetBox: TBox;
   TBA : TBoxArray;
@@ -263,26 +264,26 @@ Begin
   If Not IsLoggedIn Then
     Exit;
 
-  CTS := GetToleranceSpeed;
-  SetColorToleranceSpeed(2);
-  SetToleranceSpeed2Modifiers(RHue,RSat);
-  FindColorsSpiralTolerance(Mainscreen.PlayerPoint.X,Mainscreen.PlayerPoint.Y,TPA,RColor,MainScreen.GetBounds,RTolerance);
-  SetColorToleranceSpeed(CTS);
-  SetToleranceSpeed2Modifiers(0.2, 0.2);
+  findColorsTolerance(tpa, RColor, Mainscreen.GetBounds, RTolerance,colorSetting(2, RHue,RSat)); //1st color
 
-  ATPA := SplitTPAEx(TPA,5,10);
+  If Lowercase(RockColor) = 'brown' Then
+  Begin
+    findColorsTolerance(tpa2, RColor2, Mainscreen.GetBounds, RTolerance2,colorSetting(2, RHue2,RSat2)); //lightbrown
+    findColorsTolerance(tpa3, RColor3, Mainscreen.GetBounds, RTolerance3,colorSetting(2, RHue3,RSat3)); //darkbrown
+    tpa.combine(tpa2);
+    tpa.combine(tpa3);
+  End;
+
+  atpa := tpa.cluster(4);
+  atpa.filterBetween(0, 100);
+  atpa.filterBetween(5000, 100000);
 
   If (Length(ATPA) = 0) Then
-  Begin
-    If Lowercase(RockColor) = 'brown' Then
-    Begin
-      RHue:=0.08;
-      RSat:=1.05;
-      RColor:=1204865;
-      RTolerance:=10;
-    End;
     Exit;
-  End;
+
+  SetLength(TPA,0);
+  SetLength(TPA2,0);
+  SetLength(TPA3,0);
 
   H:=High(ATPA);
 
@@ -292,9 +293,6 @@ Begin
 
     If Debug Then
       Writeln('Rock Length: '+tostr(Length(atpa[i]))+' For I:= '+ToStr(I));
-
-    If (Length(ATPA[I]) < 150) Then
-      Continue;
 
     NetBox := GetTPABounds(ATPA[I]);
     NetBox := IntToBox(Max(NetBox.X1+3,0),Max(NetBox.Y1+2,0),Min(NetBox.X2-5,Mainscreen.Getbounds.X2),Min(NetBox.Y2-4,Mainscreen.Getbounds.Y2));
@@ -325,18 +323,8 @@ Begin
     Writeln('Box out of bounds');
   End;
 
-  If (Length(TBA)=0) And (Switch) Then
-  Begin
-    If Lowercase(RockColor) = 'brown' Then
-    Begin
-      RHue:=0.08;
-      RSat:=1.05;
-      RColor:=1204865;
-      RTolerance:=10;
-    End;
-    Switch:=False;
+  If (Length(TBA)=0) Then
     Exit;
-  End;
 
   For H := 0 To High(TBA) Do
   Begin
@@ -367,6 +355,50 @@ Begin
   SetLength(ATPA,0);
 End;
 
+procedure TRSTabBackpack.dropItems(slotArr: TIntegerArray = DROP_PATTERN_REGULAR; Destroy: Boolean); Overload;
+var
+  r, I, l: integer;
+  tia: TIntegerArray;
+begin
+  if (not self.open()) then
+    exit;
+
+  l := length(slotArr);
+
+  if (l < 1) then
+  begin
+    print('dropItems: You didnt enter any slots to drop.', TDebug.ERROR);
+    exit;
+  end;
+
+  for i := 0 to (l - 1) do
+    if (self.isSlotVaild(slotArr[i])) and (self.isItemInSlot(slotArr[i])) then
+    begin
+      self.mouseSlot(slotArr[i], MOUSE_RIGHT);
+      if chooseOption.optionsExist(['estroy']) then
+        if chooseOption.select(['estroy']) then
+        begin
+          wait(randomrange(1000,1500));
+          mousebox(inttobox(376,493,438,501),Mouse_Left,Mouse_Human);
+          wait(randomrange(2000,2200));
+          SkipCenter:=False;
+          exit;
+        end;
+      if chooseOption.select(['Drop', 'drop', 'rop']) then
+      begin
+        insert(slotArr[i], tia);
+        wait(120 + random(305));
+      end;
+    end;
+
+  if (length(tia) > 0) then
+  begin
+    tia.sortQuick();
+    print('dropItems: Dropped items in slots ' + toStr(tia));
+  end else
+    print('dropItems: Failed finding any items to drop');
+end;
+
 Procedure Drop;
 var
   timesTried:integer;
@@ -389,7 +421,7 @@ begin
   End;
   T.Start;
   Repeat
-    TypeSend(ToStr(QuickKey), False);
+    SendKeys(ToStr(QuickKey), 60 + Random(60), 60 + Random(60));
     Wait(GaussRangeInt(0,100));
 
     If Not IsLoggedIn Then
@@ -410,9 +442,9 @@ begin
   T.Start;
   Repeat
     Wait(GaussRangeInt(500,1100));
-    TabBackpack.DropItems;
+    TabBackpack.DropItems(,True);;
     FindNormalRandoms;
-  Until TabBackpack.Count = 0 Or T.GetTime>5000;
+  Until (TabBackpack.IsEmpty) Or (T.GetTime>5000);
 End;
 
 
