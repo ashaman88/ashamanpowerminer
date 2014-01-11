@@ -13,7 +13,7 @@ Const
 {General Settings}
   RockColor  = 'Silver';           //*** 'Silver' if rock is gray/silver color, 'Brown' if rock is brown***
   Ore        = 'Iron';             //*** Ore to mine, (Tin,Copper,Iron,Coal,Gold,Mithril,Addy)***
-  Direction  = MM_DIRECTION_SOUTH; //*** Direction you want your guy to face (North,South,East,West)***
+  Direction  = MM_DIRECTION_NORTH; //*** Direction you want your guy to face (North,South,East,West)***
   QuickKey   = 0;                  //*** Which key did  you bind the ore to?***
   SlowItDown = False;              //*** Go slower? IE mouse off screen...more pauses DISABLED FOR NOW***
   Hopper     = False;              //*** Hop if someone crashes your world? DISABLED FOR NOW***
@@ -37,7 +37,7 @@ Begin
   // loginName := '';      {Remove the "//" from this line if you arent using player manager}
   // password := '';       {Remove the "//" from this line if you arent using player manager}
     IsActive := True;
-    World := 00;          {Change this line if you want to login to a specific world - RECOMMENDED SO YOU WONT CRASH PEOPLE WHEN SIX HOUR RELOAD}
+    World := 0;          {Change this line if you want to login to a specific world - RECOMMENDED SO YOU WONT CRASH PEOPLE WHEN SIX HOUR RELOAD}
   End;
   CurrentPlayer := 0;
 End;
@@ -54,12 +54,12 @@ Var
   SkipCenter,Switch: Boolean;
   XPH,OresPH,RSat,RHue,OSat,OHue,RSat2,RHue2,RSat3,RHue3: Extended;
   CurrentBTime: TTimeMarker;
-  W,X,Y,Z,BreakRounds,TotalBreaks,RealBTime: Integer;
+  W,X,Y,Z,BreakRounds,TotalBreaks,RealBTime,MinWait,MaxWait: Integer;
 
 
 Const
   Debug = False;
-  ScriptVersion = '1.4';
+  ScriptVersion = '1.5';
 
 Function FindNormalRandoms: Boolean;
 Begin
@@ -230,18 +230,18 @@ Begin
   AddOnTerminate('Free');
 
   Case LowerCase(RockColor) Of
-    'silver':Begin RHue:=0.12; RSat:=0.18; RColor:=8293517; RTolerance:=14; End;
-    'brown': Begin RHue:=0.02; RSat:=0.10; RColor:=3501442; RTolerance:=14; RHue2:=0.08; RSat2:=1.05; RColor2:=1204865; RTolerance2:=10; RHue3:=0.04; RSat3:=0.33; RColor3:=5798036; RTolerance3:=12; End;
+    'silver':Begin RHue:=0.78; RSat:=0.14; RColor:=7635833; RTolerance:=18; End;
+    'brown': Begin RHue:=0.02; RSat:=0.10; RColor:=3501442; RTolerance:=14; RHue2:=0.06; RSat2:=1.56; RColor2:=1528425; RTolerance2:=14; RHue3:=0.04; RSat3:=0.78; RColor3:=6327215; RTolerance3:=15; End;
   End;
 
   Case LowerCase(Ore) Of
-    'tin':      Begin OHue:=0.19; OSat:=1.02; OColor:=9412549; OTolerance:=27; OreXP:=27; OreDTM := DTMFromString('mggAAAHicY2NgYJBgZmCQBmIlIFYEYlEg5gfifkYGhlYg7gbiSUA8A4h7gTgtMRGCAy0ZslJTGWK9TBgSfEwZuIBmYcOMODAEAAA0qwqB'); End;
-    'copper':   Begin OHue:=0.14; OSat:=1.14; OColor:=6073065; OTolerance:=21; OreXP:=18; OreDTM := DTMFromString('mggAAAHicY2NgYHjHxMDwEYh/AfF3IH4DxE+AuJeRgaEViLuBeAoQTwfiiUC8NcOcYV+OFUNWiDXDrixLhiQ/M4aUAHMGLqBZ2DAjDgwBAKszEDM='); End;
-    'iron':     Begin OHue:=0.08; OSat:=0.20; OColor:=2504288; OTolerance:=8;  OreXP:=35; OreDTM := DTMFromString('mggAAAHicY2NgYNjAxMCwEYh3AfEOIF4DxEtBNCMDwxIgXgrEm4F4CxCvA2JzBQkGE3lxhkQ/czAd6W4EZnMBzcKGGXFgCAAAaJkMag=='); End;
-    'coal':     Begin OHue:=0.00; OSat:=1.08; OColor:=1645853; OTolerance:=5;  OreXP:=50; OreDTM := DTMFromString('mggAAAHicY2NgYJBjZmBQAmJtIFYDYhEglgHibEYGhkQgTgbiHCDOBOIiIFZRlmZQV5djyAmzYZCUFGYIddZniPUyYeACmoUNM+LAEAAARXgHSw=='); End;
-    'gold':     Begin OHue:=0.16; OSat:=1.64; OColor:=6150378; OTolerance:=14; OreXP:=65; OreDTM := DTMFromString('mggAAAHicY2NgYJjJxMAwD4iXAvFCIJ4BxBOBuJeRgaENiLuBeDIQTwfiCUA8u1qUYX23BENaoCVDT74wQ7SnMUOCjykDF9AsbJgRB4YAAJfRDYw='); End;
-    'mithril':  Begin OHue:=0.04; OSat:=0.49; OColor:=8868946; OTolerance:=17; OreXP:=80; OreDTM := DTMFromString('mggAAAHicY2NgYDjMxMBwDIjPAfFpJgh/JxD3MzIwtAFxBxBPAeKZQNwHxEbGPmCc5GfGYGjoyZDgY8oQ5KTHwAU0CxtmxIEhAACTaQzn'); End;
-    'addy':     Begin OHue:=0.07; OSat:=0.15; OColor:=6521442; OTolerance:=11; OreXP:=95; OreDTM := DTMFromString('mggAAAHicY2NgYJjFxMAwB4iXAPFCIJ4GxP0gzMjA0A7EXUA8CYinA3EfEFs6WTJYu1gzpAVaMqhoqTCEuxowBDnpMXABzcKGGXFgCAAAEyQLsA=='); End;
+    'tin':      Begin OHue:=0.19; OSat:=1.02; OColor:=9412549; OTolerance:=27; OreXP:=27; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYJBgZmCQBmIlIFYEYlEg5gfifkYGhlYg7gbiSUA8A4h7gTgtMRGCAy0ZslJTGWK9TBgSfEwZuIBmYcOMODAEAAA0qwqB'); End;
+    'copper':   Begin OHue:=0.22; OSat:=1.00; OColor:=7128300; OTolerance:=24; OreXP:=18; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYHjHxMDwEYh/AfF3IH4DxE+AuJeRgaEViLuBeAoQTwfiiUC8NcOcYV+OFUNWiDXDrixLhiQ/M4aUAHMGLqBZ2DAjDgwBAKszEDM='); End;
+    'iron':     Begin OHue:=0.08; OSat:=0.20; OColor:=2504288; OTolerance:=8;  OreXP:=35; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYNjAxMCwEYh3AfEOIF4DxEtBNCMDwxIgXgrEm4F4CxCvA2JzBQkGE3lxhkQ/czAd6W4EZnMBzcKGGXFgCAAAaJkMag=='); End;
+    'coal':     Begin OHue:=0.00; OSat:=1.08; OColor:=1645853; OTolerance:=5;  OreXP:=50; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYJBjZmBQAmJtIFYDYhEglgHibEYGhkQgTgbiHCDOBOIiIFZRlmZQV5djyAmzYZCUFGYIddZniPUyYeACmoUNM+LAEAAARXgHSw=='); End;
+    'gold':     Begin OHue:=0.16; OSat:=1.64; OColor:=6150378; OTolerance:=14; OreXP:=65; MinWait:=6000; MaxWait:=8000; OreDTM := DTMFromString('mggAAAHicY2NgYJjJxMAwD4iXAvFCIJ4BxBOBuJeRgaENiLuBeDIQTwfiCUA8u1qUYX23BENaoCVDT74wQ7SnMUOCjykDF9AsbJgRB4YAAJfRDYw='); End;
+    'mithril':  Begin OHue:=0.04; OSat:=0.49; OColor:=8868946; OTolerance:=17; OreXP:=80; MinWait:=8000; MaxWait:=10000; OreDTM := DTMFromString('mggAAAHicY2NgYDjMxMBwDIjPAfFpJgh/JxD3MzIwtAFxBxBPAeKZQNwHxEbGPmCc5GfGYGjoyZDgY8oQ5KTHwAU0CxtmxIEhAACTaQzn'); End;
+    'addy':     Begin OHue:=0.07; OSat:=0.15; OColor:=6521442; OTolerance:=11; OreXP:=95; MinWait:=8000; MaxWait:=10000; OreDTM := DTMFromString('mggAAAHicY2NgYJjFxMAwB4iXAPFCIJ4GxP0gzMjA0A7EXUA8CYinA3EfEFs6WTJYu1gzpAVaMqhoqTCEuxowBDnpMXABzcKGGXFgCAAAEyQLsA=='); End;
   End;
 
   W := (BreakIn * 60000);
@@ -250,110 +250,173 @@ Begin
   Z := RandomRange(-BFR * 60000, BFR * 60000);
 End;
 
-Function FindOre: Boolean;
-Var
-  X,Y,H,I,CTS,XX,YY,SearchFromX,SearchFromY,XF,YF: Integer;
-  TempSearchX1,TempSearchY1,TempSearchX2,TempSearchY2: Integer;
-  T: TTimeMarker;
-  MBP: Tpoint;
-  TPA,TPA2,TPA3: TPointArray;
-  ATPA,ATPA2: T2DPointArray;
-  NetBox: TBox;
-  TBA : TBoxArray;
-Begin
-  If Not IsLoggedIn Then
-    Exit;
+function closeMouseOverMenu(): boolean;
+var
+  b, mouseRange, clientArea: TBox;
+  p: TPoint;
+begin
+  if (not __findMouseOverBox(b)) then
+    exit();
 
-  findColorsTolerance(tpa, RColor, Mainscreen.GetBounds, RTolerance,colorSetting(2, RHue,RSat)); //1st color
+  getClientDimensions(clientArea.x2, clientArea.y2);
+
+  __findMouseOverBox(b);
+  b.edit(-10, -25, 10, 10);
+
+  mouseRange := [b.x1 -50, b.y1 -50, b.x2 +50, b.y2 +50];
+  mouseRange.setLimit([0, 0, clientArea.x2 -1, clientArea.y2 -1]);
+
+  // get a point that is in mouseRange but not in b (choose option bounds);
+  p := mouseRange.getRandomPoint([b]);
+
+  if (p.x <> -1) then
+  begin
+    mouse(p, MOUSE_MOVE);
+    print('closeMouseOverMenu(): Succesfully closed the menu', TDebug.SUB);
+  end else
+    print('closeMouseOverMenu(): Failed to close the menu', TDebug.ERROR);
+end;
+
+function mineOre: boolean;
+var
+  col1Edges, col2Edges, goodEdge, tpa,tpa2,tpa3: TPointArray;
+  atpa, atpaFiltered: T2DPointArray;
+  i, j, len, wid, hei, avelen: integer;
+  col1,col1B2,col1B3,col2: TColorData
+begin
+  result := false;
+
+  col1:= [RColor, RTolerance, [2, RHue, RSat]];
+  col1B2:= [RColor2, RTolerance2, [2, RHue2, RSat2]];
+  col1B3:= [RColor3, RTolerance3, [2, RHue3, RSat3]];
+  col2:= [OColor, OTolerance, [2, OHue, OSat]];
+
+  col1.gatherIn(tpa, mainScreen.getBounds()); //1st color
 
   If Lowercase(RockColor) = 'brown' Then
   Begin
-    findColorsTolerance(tpa2, RColor2, Mainscreen.GetBounds, RTolerance2,colorSetting(2, RHue2,RSat2)); //lightbrown
-    findColorsTolerance(tpa3, RColor3, Mainscreen.GetBounds, RTolerance3,colorSetting(2, RHue3,RSat3)); //darkbrown
+    col1B2.gatherIn(tpa2, mainScreen.getBounds()); //lightbrown
+    col1B3.gatherIn(tpa3, mainScreen.getBounds()); //darkbrown
     tpa.combine(tpa2);
     tpa.combine(tpa3);
   End;
 
-  atpa := tpa.cluster(4);
-  atpa.filterBetween(0, 100);
-  atpa.filterBetween(5000, 100000);
+  print('TRSBankscreen.__openChest()', TDebug.HEADER);
 
-  If (Length(ATPA) = 0) Then
-    Exit;
+  col1Edges := findTPAEdges(tpa);
 
   SetLength(TPA,0);
   SetLength(TPA2,0);
   SetLength(TPA3,0);
 
-  H:=High(ATPA);
+  if (col2.gatherIn(tpa, mainScreen.getBounds())) then
+    col2Edges := findTPAEdges(tpa);
 
-  For I:=0 To H Do
-  Begin
-    MiddleTPAEx(ATPA[I],X,Y);
-
-    If Debug Then
-      Writeln('Rock Length: '+tostr(Length(atpa[i]))+' For I:= '+ToStr(I));
-
-    NetBox := GetTPABounds(ATPA[I]);
-    NetBox := IntToBox(Max(NetBox.X1+3,0),Max(NetBox.Y1+2,0),Min(NetBox.X2-5,Mainscreen.Getbounds.X2),Min(NetBox.Y2-4,Mainscreen.Getbounds.Y2));
-
-    With NetBox Do
-    Begin
-      SetColorToleranceSpeed(2);
-      SetToleranceSpeed2Modifiers(OHue,OSat);
-      FindColorsSpiralTolerance(Mainscreen.PlayerPoint.X,Mainscreen.PlayerPoint.Y,TPA2,OColor,NetBox.X1,NetBox.Y1,NetBox.X2,NetBox.Y2,OTolerance);
-      SetColorToleranceSpeed(CTS);
-      SetToleranceSpeed2Modifiers(0.2, 0.2);
-
-      If (Length(TPA2) > 2) Then
-      Begin
-        SetArrayLength(TBA, Length(TBA)+1);
-        TBA[High(TBA)] := NetBox;
-      End;
-    End;
-  End;
-
-  SetLength(TPA2,0);
-  MidSortBoxArrayFrom(TBA,Mainscreen.PlayerPoint);
-
-  Try
-    SmartImage.Clear;
-    SmartImage.DrawBoxes(TBA,False,clred);
-  Except
-    Writeln('Box out of bounds');
-  End;
-
-  If (Length(TBA)=0) Then
-    Exit;
-
-  For H := 0 To High(TBA) Do
-  Begin
-    MBP := MiddleBox(TBA[H]);
-
-    MouseBox(TBA[H],Mouse_Move,Mouse_Break);
-
-    If IsMouseOverText(['ore roc']) Then
-    Begin
-      If Debug Then
-        Writeln('Found ore, clicking');
-      If DidClick(True,600) Then
-      Begin
-        Result:=True;
-        Switch:=False;
-        SetLength(TPA,0);
-        SetLength(ATPA,0);
-        If TabBackpack.WaitForShift(5000) Then
-        Begin
-          IncEx(OresMined,1);
-          Exit;
-        End;
-      End Else
-        Wait(RandomRange(1000,2000));
-    End;
-  End;
   SetLength(TPA,0);
-  SetLength(ATPA,0);
-End;
+
+  len := length(col1Edges);
+
+  if (len < 5) or (length(col2Edges) < 5) then
+  begin
+    print('Failed to find enough chest colors [1 '+toStr(len)+', 2 '+toStr(length(col2Edges))+' ]', TDebug.ERROR);
+    print('TRSBankscreen.__openChest(): result = false', TDebug.FOOTER);
+    SetLength(col1Edges,0);
+    SetLength(col2Edges,0);
+    exit(false);
+  end;
+
+  setLength(goodEdge, len * length(col2Edges));
+  j := 0;
+
+  for i := 0 to (len - 1) do
+    if (nearbyPointInArrayEx(col1Edges[i], 1, 1, col2Edges)) then
+    begin
+      goodEdge[j] := col1Edges[i];
+      inc(j);
+    end;
+
+  SetLength(col1Edges,0);
+  SetLength(col2Edges,0);
+
+  setLength(goodEdge, j);
+
+  if (j < 5) then
+  begin
+    print('Failed to find enough good bank chest edges', TDebug.ERROR);
+    print('TRSBankscreen.__openChest(): result = false', TDebug.FOOTER);
+    exit(false);
+  end;
+
+  atpa := clusterTPAEx(goodEdge, 30, 30);
+
+  for i := 0 to high(atpa) do
+    if (length(atpa[i]) > 5) then
+    begin
+      getTPABounds(atpa[i]).getDimensions(wid, hei);
+
+      if (wid > 3) and (hei > 3) then
+        insert(atpa[i], atpaFiltered);
+    end;
+
+  SetLength(goodEdge,0);
+
+  if (length(atpaFiltered) < 1) then
+  begin
+    print('Failed to find enough good vaild bank chest edges', TDebug.ERROR);
+    print('TRSBankscreen.__openChest(): result = false', TDebug.FOOTER);
+    SetLength(atpa,0);
+    exit(false);
+  end;
+
+  tpa := mergeATPA(atpaFiltered);
+  SetLength(atpa,0);
+  atpa := clusterTPAEx(tpa, 20, 20);
+  atpa.filterBetween(0,20);
+  SetLength(tpa,0);
+
+  atpa.sortfromfirstpoint(mainscreen.playerpoint);
+
+  smartimage.debugatpa(atpa);
+
+  for i := 0 to high(atpa) do
+  begin
+    if (random(7) = 0) then
+      mouse(atpa[i][random(high(atpa[i]))].randRange(-2, 2))
+    else
+      mouse(atpa[i].getMiddle().randRange(-6, 6));
+
+    if (isMouseOverText(['ore roc'])) then
+    begin
+      if (random(10) = 1) then
+      begin
+        fastClick(MOUSE_RIGHT);
+
+        if (not chooseOption.select(['ore roc'])) then
+          continue;
+      end else
+        if not didclick(true) then
+          continue;
+
+      wait(50 + random(100));
+
+      smartimage.clear;
+      closeMouseOverMenu;
+
+      result := TabBackpack.WaitForShift(RandomRange(MinWait,MaxWait));
+
+      if (result) then
+      begin
+        print('Succesfully opened the bank');
+        SetLength(atpa,0);
+        break();
+      end;
+    end;
+  end;
+
+  SetLength(atpa,0);
+
+  print('TRSBankscreen.__openChest() result = '+lowercase(boolToStr(result)), TDebug.FOOTER);
+end;
 
 procedure TRSTabBackpack.dropItems(slotArr: TIntegerArray = DROP_PATTERN_REGULAR; Destroy: Boolean); Overload;
 var
@@ -475,8 +538,9 @@ Begin
   RockTimer.Start;
 
   Repeat
-    If FindOre Then
+    If mineOre Then
     Begin
+      Inc(OresMined);
       RockTimer.Reset;
       RockTimer.Start;
       ProgressReport;
