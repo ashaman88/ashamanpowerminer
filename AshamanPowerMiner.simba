@@ -59,7 +59,7 @@ Var
 
 Const
   Debug = False;
-  ScriptVersion = '1.5';
+  ScriptVersion = '1.6';
 
 Function FindNormalRandoms: Boolean;
 Begin
@@ -286,10 +286,10 @@ var
 begin
   result := false;
 
-  col1:= [RColor, RTolerance, [2, RHue, RSat]];
-  col1B2:= [RColor2, RTolerance2, [2, RHue2, RSat2]];
-  col1B3:= [RColor3, RTolerance3, [2, RHue3, RSat3]];
-  col2:= [OColor, OTolerance, [2, OHue, OSat]];
+  col1:= [RColor, RTolerance, [2, [RHue, RSat]]];
+  col1B2:= [RColor2, RTolerance2, [2, [RHue2, RSat2]]];
+  col1B3:= [RColor3, RTolerance3, [2, [RHue3, RSat3]]];
+  col2:= [OColor, OTolerance, [2, [OHue, OSat]]];
 
   col1.gatherIn(tpa, mainScreen.getBounds()); //1st color
 
