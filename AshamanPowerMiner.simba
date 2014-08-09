@@ -1,6 +1,54 @@
+///////////////////////////////////////////////////////////////////////
+//                                                                   //
+//          READ THE DIRECTIONS IN THE OP FIRST OR ELSE              //
+//           Make sure you have setup your player file               //
+//                  Under SRL>PlayerManager                          //
+//                       Press Play                                  //
+//                                                                   //
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 Program AshamanPowerMiner;
 {$DEFINE SMART}
 {$I SRL-6/SRL.Simba}
+{$i srl-6/lib/misc/srlplayerform.simba}
 
 ///////////////////////////////////////////////////////////////////////
 //                                                                   //
@@ -10,37 +58,9 @@ Program AshamanPowerMiner;
 ///////////////////////////////////////////////////////////////////////
 
 Const
-{General Settings}
-  RockColor  = 'Silver';           //*** 'Silver' if rock is gray/silver color, 'Brown' if rock is brown***
-  Ore        = 'Iron';             //*** Ore to mine, (Tin,Copper,Iron,Coal,Gold,Mithril,Addy)***
-  Direction  = MM_DIRECTION_NORTH; //*** Direction you want your guy to face (North,South,East,West)***
-  QuickKey   = 0;                  //*** Which key did  you bind the ore to?***
-  SlowItDown = False;              //*** Go slower? IE mouse off screen...more pauses DISABLED FOR NOW***
-  Hopper     = False;              //*** Hop if someone crashes your world? DISABLED FOR NOW***
-
 {Break Settings}
-  TakeBreaks    = False;        // ***Take breaks? If false ignore break variables***
-  BreakIn       = 600;          // ***How long before we take a break? (minutes)***
-  BreakFor      = 15;           // ***How long will we break for? (minutes)***
   Bir           = 13;           // ***Random minutes to add/subtract from how long until we break***
   Bfr           = 7;            // ***Random minutes to add/subjtract from break duraction***
-
-
-Procedure DeclarePlayers;
-Begin
-  Players.Setup(['Player1'], 'PlayerList'); //***Fill this out, Player1 = Name of the account in player manager, PlayerList = name of the player file***
-  SetLength(Players,1);
-
-  //***If NOT using the player manager, fill out the loginname and password below, otherwise ignore those two***
-  With players[0] Do
-  Begin
-  // loginName := '';      {Remove the "//" from this line if you arent using player manager}
-  // password := '';       {Remove the "//" from this line if you arent using player manager}
-    IsActive := True;
-    World := 0;          {Change this line if you want to login to a specific world - RECOMMENDED SO YOU WONT CRASH PEOPLE WHEN SIX HOUR RELOAD}
-  End;
-  CurrentPlayer := 0;
-End;
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                       //
@@ -51,19 +71,79 @@ End;
 
 Var
   OresMined,OreXP,OreDTM,XP,RColor,RTolerance,OColor,OTolerance,RColor2,RTolerance2,RColor3,RTolerance3:integer;
-  SkipCenter,Switch: Boolean;
+  SkipCenter,Switch, takeBreaks, debug, switchWorlds: Boolean;
   XPH,OresPH,RSat,RHue,OSat,OHue,RSat2,RHue2,RSat3,RHue3: Extended;
   CurrentBTime: TTimeMarker;
-  W,X,Y,Z,BreakRounds,TotalBreaks,RealBTime,MinWait,MaxWait: Integer;
+  W,X,Y,Z,BreakRounds,TotalBreaks,RealBTime,MinWait,MaxWait, direction, breakIn, breakFor: Integer;
+  quickKey, rockColor, ore: String;
+
 
 
 Const
-  Debug = False;
-  ScriptVersion = '1.6';
+  ScriptVersion = '1.7';
 
-Function FindNormalRandoms: Boolean;
+procedure declarePlayers();
+var
+  i,j: integer;
+begin
+  players.setup(playerForm.playerNames, playerForm.playerFile); // load the SPF players from the SRL Player Manager
+  currentPlayer := 0;                                           // player to use first
+
+  // set player attributes based on the settings from the form
+  for i := 0 to high(players) do
+    with players[i] do
+    begin
+      // convert the integers
+      breakIn := strToInt(playerForm.players[i].settings[1]);  //minutes until break
+      breakFor := strToInt(playerForm.players[i].settings[2]);  //minutes to break
+
+      for j := 0 to high(playerForm.comboBoxItems[2]) do
+        if (playerForm.players[i].settings[10] = playerForm.comboBoxItems[2][j]) then
+          direction := j * 90;                                                  //direction
+
+      World :=  strToInt(playerForm.players[i].settings[3]);                    //world
+
+      // booleans
+      takeBreaks := strToBool(playerForm.players[i].settings[4]);
+      switchWorlds := strToBool(playerForm.players[i].settings[5]);
+      FindMod := strToBool(playerForm.players[i].settings[6]);
+      debug := strToBool(playerForm.players[i].settings[7]);
+
+      // any other data types you've decided to use
+      quickKey := playerForm.players[i].settings[0]; //quickkey
+      rockColor := playerForm.players[i].settings[8]; //cleanorpots
+      ore := playerForm.players[i].settings[9]; //cleanorpots
+    end;
+end;
+
+// initiates the SRL player form (you aren't restricted to the procedure name; it can be whatever you want)
+procedure initPlayerForm();
+begin
+  with playerForm do
+  begin
+    name := 'AshamanPowerMiner v'+toStr(ScriptVersion); // the title of the SPF, usually the name of your script
+    scriptHelpThread := '';           // a link to a help thread, if set to '' will link to my setup guide
+    scriptSettingsPath := '';         // where you want the settings file to be saved; saved in script's path by default
+
+    editBoxLabels := ['QuickKey', 'Minutes until Break', '# of Minutes to Break', 'World']; // edit boxes are created for each array element
+    editBoxDefaults := [ '0', '600', '15','0'];                                             // optional default values for each edit box; array length must equal editBoxLabel length
+    checkBoxLabels := ['Take Breaks', 'Switch Worlds (After Break)', 'Logout if Mod is near', 'Debug'];        // same as editBoxLabels but for check boxes
+    checkBoxDefaults := ['True','True','True', 'False'];
+
+    comboBoxLabels := ['OutterRockColor','OreType','MMDirection'];                                                // same as editBoxLabels but for combo boxes (drop down boxes)
+    comboBoxDefaults := ['Silver','Iron','North'];
+
+    // this needs to be done for every element in the comboBoxLabels array
+    setLength(comboBoxItems, length(comboBoxLabels));
+    comboBoxItems[0] := ['Silver', 'Brown', 'Tan'];       // all the options available for the first combo box
+    comboBoxItems[1] := ['Tin', 'Copper', 'Iron', 'Coal', 'Gold', 'Mithril', 'Addy'];       // all the options available for the first combo box
+    comboBoxItems[2] := ['North', 'East', 'South', 'West'];
+  end;
+end;
+
+function findNormalRandoms: Boolean;
 Begin
-  Result:= ExitSquealOfFortune Or ClaimSpinTicket;
+  Result:= exitTreasure Or claimTicket;
 End;
 
 Function BreakHandler(BreakIn, BreakFor, randBreakIn, randBreakFor: Integer): Boolean;
@@ -200,28 +280,33 @@ Begin
     WriteLn('You have the latest version of the script!');
 End;
 
+procedure free;
+begin
+  freeDTM(OreDTM);
+end;
 
-Procedure Free;
-Begin
-  FreeDTM(OreDTM);
-End;
+procedure setup;
+begin
+  clearDebug;
+  autoUpdateMe;
+  smartEnableDrawing := True;
+  switch := true;
 
+  initPlayerForm(); // initiate your settings
+  runPlayerForm();  // run the form
 
-Procedure Setup;
-Begin
-  ClearDebug;
-  AutoUpdateMe;
-  SmartEnableDrawing := True;
-  Switch:=True;
+  // use this so the script doesn't continue if the user exits out of the form
+  if (not playerForm.isScriptReady) then
+    terminatescript;
 
-  DeclarePlayers;
-  SetupSRL;
+  declarePlayers;
+  setupSRL;
 
-  If Not Players[CurrentPlayer].Login Then
-    TerminateScript;
+  if not players[CurrentPlayer].login then
+    terminateScript;
 
-  If Not Debug Then
-    DisableSRLDebug:=True;
+  if not debug then
+    disableSRLDebug := true;
 
   Minimap.SetAngle(Direction);
   MainScreen.SetAngle(MS_ANGLE_HIGH);
@@ -231,15 +316,16 @@ Begin
 
   Case LowerCase(RockColor) Of
     'silver':Begin RHue:=0.78; RSat:=0.14; RColor:=7635833; RTolerance:=18; End;
-    'brown': Begin RHue:=0.02; RSat:=0.10; RColor:=3501442; RTolerance:=14; RHue2:=0.06; RSat2:=1.56; RColor2:=1528425; RTolerance2:=14; RHue3:=0.04; RSat3:=0.78; RColor3:=6327215; RTolerance3:=15; End;
+    'brown': Begin RHue:=0.19; RSat:=1.33; RColor:=1525085; RTolerance:=10; End;
+    'tan':   begin RHue:=0.24; RSat:=0.52; RColor:=6851244; RTolerance:=12; End;
   End;
 
   Case LowerCase(Ore) Of
-    'tin':      Begin OHue:=0.19; OSat:=1.02; OColor:=9412549; OTolerance:=27; OreXP:=27; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYJBgZmCQBmIlIFYEYlEg5gfifkYGhlYg7gbiSUA8A4h7gTgtMRGCAy0ZslJTGWK9TBgSfEwZuIBmYcOMODAEAAA0qwqB'); End;
-    'copper':   Begin OHue:=0.22; OSat:=1.00; OColor:=7128300; OTolerance:=24; OreXP:=18; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYHjHxMDwEYh/AfF3IH4DxE+AuJeRgaEViLuBeAoQTwfiiUC8NcOcYV+OFUNWiDXDrixLhiQ/M4aUAHMGLqBZ2DAjDgwBAKszEDM='); End;
-    'iron':     Begin OHue:=0.08; OSat:=0.20; OColor:=2504288; OTolerance:=8;  OreXP:=35; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYNjAxMCwEYh3AfEOIF4DxEtBNCMDwxIgXgrEm4F4CxCvA2JzBQkGE3lxhkQ/czAd6W4EZnMBzcKGGXFgCAAAaJkMag=='); End;
+    'tin':      Begin OHue:=2.43; OSat:=0.36; OColor:=11185056; OTolerance:=27; OreXP:=20; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYJBgZmCQBmIlIFYEYlEg5gfifkYGhlYg7gbiSUA8A4h7gTgtMRGCAy0ZslJTGWK9TBgSfEwZuIBmYcOMODAEAAA0qwqB'); End;
+    'copper':   Begin OHue:=0.23; OSat:=1.15; OColor:=7324136; OTolerance:=24; OreXP:=18; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYHjHxMDwEYh/AfF3IH4DxE+AuJeRgaEViLuBeAoQTwfiiUC8NcOcYV+OFUNWiDXDrixLhiQ/M4aUAHMGLqBZ2DAjDgwBAKszEDM='); End;
+    'iron':     Begin OHue:=0.09; OSat:=1.18; OColor:=2175590; OTolerance:=8;  OreXP:=35; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYNjAxMCwEYh3AfEOIF4DxEtBNCMDwxIgXgrEm4F4CxCvA2JzBQkGE3lxhkQ/czAd6W4EZnMBzcKGGXFgCAAAaJkMag=='); End;
     'coal':     Begin OHue:=0.00; OSat:=1.08; OColor:=1645853; OTolerance:=5;  OreXP:=50; MinWait:=4000; MaxWait:=6000; OreDTM := DTMFromString('mggAAAHicY2NgYJBjZmBQAmJtIFYDYhEglgHibEYGhkQgTgbiHCDOBOIiIFZRlmZQV5djyAmzYZCUFGYIddZniPUyYeACmoUNM+LAEAAARXgHSw=='); End;
-    'gold':     Begin OHue:=0.16; OSat:=1.64; OColor:=6150378; OTolerance:=14; OreXP:=65; MinWait:=6000; MaxWait:=8000; OreDTM := DTMFromString('mggAAAHicY2NgYJjJxMAwD4iXAvFCIJ4BxBOBuJeRgaENiLuBeDIQTwfiCUA8u1qUYX23BENaoCVDT74wQ7SnMUOCjykDF9AsbJgRB4YAAJfRDYw='); End;
+    'gold':     Begin OHue:=0.16; OSat:=2.41; OColor:=6803937; OTolerance:=14; OreXP:=65; MinWait:=6000; MaxWait:=8000; OreDTM := DTMFromString('mggAAAHicY2NgYJjJxMAwD4iXAvFCIJ4BxBOBuJeRgaENiLuBeDIQTwfiCUA8u1qUYX23BENaoCVDT74wQ7SnMUOCjykDF9AsbJgRB4YAAJfRDYw='); End;
     'mithril':  Begin OHue:=0.04; OSat:=0.49; OColor:=8868946; OTolerance:=17; OreXP:=80; MinWait:=8000; MaxWait:=10000; OreDTM := DTMFromString('mggAAAHicY2NgYDjMxMBwDIjPAfFpJgh/JxD3MzIwtAFxBxBPAeKZQNwHxEbGPmCc5GfGYGjoyZDgY8oQ5KTHwAU0CxtmxIEhAACTaQzn'); End;
     'addy':     Begin OHue:=0.07; OSat:=0.15; OColor:=6521442; OTolerance:=11; OreXP:=95; MinWait:=8000; MaxWait:=10000; OreDTM := DTMFromString('mggAAAHicY2NgYJjFxMAwB4iXAPFCIJ4GxP0gzMjA0A7EXUA8CYinA3EfEFs6WTJYu1gzpAVaMqhoqTCEuxowBDnpMXABzcKGGXFgCAAAEyQLsA=='); End;
   End;
@@ -462,7 +548,7 @@ begin
     print('dropItems: Failed finding any items to drop');
 end;
 
-Procedure Drop;
+Procedure drop;
 var
   timesTried:integer;
   T: TTimeMarker;
@@ -509,8 +595,6 @@ begin
     FindNormalRandoms;
   Until (TabBackpack.IsEmpty) Or (T.GetTime>5000);
 End;
-
-
 
 Procedure ProgressReport;
 Begin
@@ -560,7 +644,6 @@ Begin
       End;
   Until (TabBackpack.IsFull);
 End;
-
 
 Begin
   Setup;
